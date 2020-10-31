@@ -2,8 +2,6 @@ package models
 
 import (
 	"time"
-
-	"gorm.io/gorm"
 )
 
 func AllModels() []interface{} {
@@ -14,14 +12,14 @@ func AllModels() []interface{} {
 }
 
 type Transaction struct {
-	gorm.Model
-	Date     *time.Time
-	Amount   float32
-	Category string
-	Vendor   string
+	ID       uint      `gorm:"primarykey" json:"id"`
+	Date     time.Time `json:"date"`
+	Amount   float32   `json:"amount"`
+	Category string    `json:"category"`
+	Vendor   string    `json:"vendor"`
 }
 
 type Category struct {
-	gorm.Model
-	Name string
+	ID   uint   `gorm:"primarykey" json:"id"`
+	Name string `gorm:"unique" json:"name"`
 }

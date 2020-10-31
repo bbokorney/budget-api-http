@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/bbokorney/budget-api-http/pkg/models"
 	"github.com/bbokorney/budget-api-http/pkg/server"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -41,8 +43,17 @@ func main() {
 
 	bs := server.NewBudgetServer(db, logger)
 
+	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowOrigins = []string{"*"}
+	corsConfig.AllowCredentials = true
+	corsConfig.AddAllowMethods("OPTIONS")
 	r := gin.Default()
+	r.Use(cors.New(corsConfig))
 	r.POST("/v1/transactions", bs.AddTransaction)
+	r.GET("/v1/transactions", bs.ListTransactions)
+
+	r.POST("/v1/categories", bs.AddCategory)
+	r.GET("/v1/categories", bs.ListCategories)
 
 	if err := r.Run(listenAddr); err != nil {
 		logger.Fatal("Error running server", zap.Error(err))
@@ -51,7 +62,19 @@ func main() {
 
 func buildLogger() *zap.Logger {
 	config := zap.NewDevelopmentConfig()
-	config.Level.SetLevel(zapcore.InfoLevel)
+	logLevel := os.Getenv("LOG_LEVEL")
+	fmt.Println("loglevel =", logLevel)
+	level := zapcore.DebugLevel
+	switch strings.ToLower(logLevel) {
+	case "debug":
+		level = zapcore.DebugLevel
+		break
+	case "info":
+		level = zapcore.InfoLevel
+		break
+	}
+	fmt.Printf("Setting log level to %s\n", level)
+	config.Level.SetLevel(level)
 
 	var err error
 	logger, err := config.Build()
