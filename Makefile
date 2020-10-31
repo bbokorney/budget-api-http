@@ -5,3 +5,6 @@ build:
 
 run: build
 	build/_outputs/budget-server
+
+reload:
+	hack/reload.sh 'make run' pkg/ cmd/
