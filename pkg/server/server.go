@@ -37,7 +37,14 @@ func (bs *BudgetServer) AddTransaction(c *gin.Context) {
 }
 
 func (bs *BudgetServer) ListTransactions(c *gin.Context) {
-
+	var t []models.Transaction
+	result := bs.db.Find(&t)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
+		return
+	}
+	bs.logger.Debug("ListTransactions", zap.Any("transaction", t))
+	c.JSON(http.StatusOK, t)
 }
 
 func (bs *BudgetServer) AddCategory(c *gin.Context) {
