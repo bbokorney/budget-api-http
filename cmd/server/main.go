@@ -61,6 +61,8 @@ func main() {
 }
 
 func buildLogger() *zap.Logger {
+	// TODO: make logging level dynamic via rest endpoint
+	// https://godoc.org/go.uber.org/zap#example-AtomicLevel
 	config := zap.NewDevelopmentConfig()
 	logLevel := os.Getenv("LOG_LEVEL")
 	fmt.Println("loglevel =", logLevel)

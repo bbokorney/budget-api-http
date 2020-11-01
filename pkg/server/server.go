@@ -1,7 +1,9 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/bbokorney/budget-api-http/pkg/models"
 	"github.com/gin-gonic/gin"
@@ -37,13 +39,32 @@ func (bs *BudgetServer) AddTransaction(c *gin.Context) {
 }
 
 func (bs *BudgetServer) ListTransactions(c *gin.Context) {
+	type listTransactionsParams struct {
+		CurrentMonth bool `form:"current_month"`
+	}
+	var params listTransactionsParams
+	if err := c.ShouldBind(&params); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	bs.logger.Debug("ListTransactions params", zap.Any("params", params))
 	var t []models.Transaction
-	result := bs.db.Find(&t)
+	var result *gorm.DB
+	if params.CurrentMonth {
+		today := time.Now()
+		year, month := today.Year(), today.Month()
+		start := fmt.Sprintf("%d-%d-01 00:00", year, month)
+		end := fmt.Sprintf("%d-%d-01 00:00", year, (month+1)%12)
+		bs.logger.Debug("ListTransactions", zap.Any("start", start), zap.Any("end", end))
+		result = bs.db.Where("date BETWEEN ? AND ?", start, end).Find(&t)
+	} else {
+		result = bs.db.Find(&t)
+	}
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
 		return
 	}
-	bs.logger.Debug("ListTransactions", zap.Any("transaction", t))
+	bs.logger.Debug("ListTransactions", zap.Any("transactions", t))
 	c.JSON(http.StatusOK, t)
 }
 
