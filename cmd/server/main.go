@@ -58,6 +58,9 @@ func main() {
 	r.POST("/v1/category-limits", bs.AddCategoryLimit)
 	r.GET("/v1/category-limits", bs.ListCategoryLimits)
 
+	r.POST("/v1/annual-limits", bs.AddAnnualLimit)
+	r.GET("/v1/annual-limits", bs.ListAnnualLimits)
+
 	r.GET("/v1/spending", bs.GetSpending)
 
 	if err := r.Run(listenAddr); err != nil {

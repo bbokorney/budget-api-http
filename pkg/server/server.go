@@ -1,8 +1,10 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 
+	"github.com/bbokorney/budget-api-http/pkg/calcutil"
 	"github.com/bbokorney/budget-api-http/pkg/models"
 	"github.com/bbokorney/budget-api-http/pkg/spendingview"
 	"github.com/bbokorney/budget-api-http/pkg/sqlutil"
@@ -140,9 +142,117 @@ func (bs *BudgetServer) ListCategoryLimits(c *gin.Context) {
 	}
 	bs.logger.Debug("ListCategoryLimits", zap.Any("limits", limits))
 
+	// TODO: dry up this code
+	// TODO: make one endpoint of these three spending related endpoints
+	var annualLimit float64
+	result = bs.db.Model(&models.AnnualLimit{}).
+		Select("min(amount)").First(&annualLimit)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
+		return
+	}
+	bs.logger.Debug("ListCategoryLimits", zap.Any("annualLimit", annualLimit))
+
+	var annualTotal float64
+	result = bs.db.Model(&models.Transaction{}).
+		Scopes(sqlutil.CurrentYearWhereClause).
+		Select("sum(amount)").
+		Find(&annualTotal)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
+		return
+	}
+	bs.logger.Debug("ListCategoryLimits", zap.Any("annualTotal", annualTotal))
+
+	var annualPlannedSpending float64
+	result = bs.db.Model(&models.AnnualPlannedSpending{}).
+		Select("min(amount)").First(&annualPlannedSpending)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
+		return
+	}
+	bs.logger.Debug("ListCategoryLimits", zap.Any("annualPlannedSpending", annualPlannedSpending))
+
+	var monthlyPlannedTotal float64
+	result = bs.db.Model(&models.CategoryLimit{}).
+		Select("sum(amount)").
+		Find(&monthlyPlannedTotal)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
+		return
+	}
+	bs.logger.Debug("ListCategoryLimits", zap.Any("monthlyPlannedTotal", monthlyPlannedTotal))
+
+	retBody := map[string]float64{}
+	otherSpending := calcutil.UnplannedMonthlySpending(annualLimit, annualTotal, annualPlannedSpending, monthlyPlannedTotal)
+	retBody["Other"] = otherSpending
+	var total float64 = otherSpending
+	for _, l := range limits {
+		retBody[l.Name] = l.Amount
+		total += l.Amount
+	}
+	retBody["Total"] = total
+	c.JSON(http.StatusOK, retBody)
+}
+
+func (bs *BudgetServer) AddAnnualLimit(c *gin.Context) {
+	var limit models.AnnualLimit
+	if err := c.ShouldBindJSON(&limit); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	bs.logger.Debug("AddAnnualLimit", zap.Any("limit", limit))
+	result := bs.db.Create(&limit)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
+		return
+	}
+	c.Status(http.StatusAccepted)
+}
+
+func (bs *BudgetServer) ListAnnualLimits(c *gin.Context) {
+	var limits []models.AnnualLimit
+	result := bs.db.Find(&limits)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
+		return
+	}
+	bs.logger.Debug("ListAnnualLimits", zap.Any("limits", limits))
+
+	var annualTotal float64
+	result = bs.db.Model(&models.Transaction{}).
+		Scopes(sqlutil.CurrentYearWhereClause).
+		Select("sum(amount)").
+		Find(&annualTotal)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
+		return
+	}
+	bs.logger.Debug("ListAnnualLimits", zap.Any("annualTotal", annualTotal))
+
+	var monthlyPlannedTotal float64
+	result = bs.db.Model(&models.CategoryLimit{}).
+		Select("sum(amount)").
+		Find(&monthlyPlannedTotal)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
+		return
+	}
+	bs.logger.Debug("ListAnnualLimits", zap.Any("monthlyPlannedTotal", monthlyPlannedTotal))
+
+	var annualPlannedSpending float64
+	result = bs.db.Model(&models.AnnualPlannedSpending{}).
+		Select("min(amount)").First(&annualPlannedSpending)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
+		return
+	}
+	bs.logger.Debug("ListAnnualLimits", zap.Any("annualPlannedSpending", annualPlannedSpending))
+
 	retBody := map[string]float64{}
 	for _, l := range limits {
-		retBody[l.Name] = l.Limit
+		retBody[fmt.Sprintf("%.0fk", l.Amount/1000.0)] = calcutil.UnplannedMonthlySpending(l.Amount, annualTotal, annualPlannedSpending, monthlyPlannedTotal)
 	}
+	retBody["Total"] = annualTotal
 	c.JSON(http.StatusOK, retBody)
 }

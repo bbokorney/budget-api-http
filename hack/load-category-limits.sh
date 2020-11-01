@@ -10,5 +10,5 @@ for line in $(cat $limits_file); do
   if [[ -z $name ]]; then
     continue
   fi
-  curl -X POST localhost:8000/v1/category-limits -d "{\"name\":\"$name\",\"limit\":"$amount"}"
+  curl -X POST localhost:8000/v1/category-limits -d "{\"name\":\"$name\",\"amount\":"$amount"}"
 done

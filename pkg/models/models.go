@@ -9,6 +9,8 @@ func AllModels() []interface{} {
 		&Transaction{},
 		&Category{},
 		&CategoryLimit{},
+		&AnnualLimit{},
+		&AnnualPlannedSpending{},
 	}
 }
 
@@ -26,7 +28,17 @@ type Category struct {
 }
 
 type CategoryLimit struct {
-	ID    uint    `gorm:"primarykey" json:"id"`
-	Name  string  `gorm:"unique" json:"name"`
-	Limit float64 `json:"limit"`
+	ID     uint    `gorm:"primarykey" json:"id"`
+	Name   string  `gorm:"unique" json:"name"`
+	Amount float64 `json:"amount"`
+}
+
+type AnnualLimit struct {
+	ID     uint    `gorm:"primarykey" json:"id"`
+	Amount float64 `json:"amount"`
+}
+
+type AnnualPlannedSpending struct {
+	ID     uint    `gorm:"primarykey" json:"id"`
+	Amount float64 `json:"amount"`
 }
