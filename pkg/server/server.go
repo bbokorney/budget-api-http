@@ -115,3 +115,34 @@ func (bs *BudgetServer) GetSpending(c *gin.Context) {
 	retBody["Total"] = totalSum
 	c.JSON(http.StatusOK, retBody)
 }
+
+func (bs *BudgetServer) AddCategoryLimit(c *gin.Context) {
+	var limit models.CategoryLimit
+	if err := c.ShouldBindJSON(&limit); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	bs.logger.Debug("AddCategoryLimit", zap.Any("limit", limit))
+	result := bs.db.Create(&limit)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
+		return
+	}
+	c.Status(http.StatusAccepted)
+}
+
+func (bs *BudgetServer) ListCategoryLimits(c *gin.Context) {
+	var limits []models.CategoryLimit
+	result := bs.db.Find(&limits)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
+		return
+	}
+	bs.logger.Debug("ListCategoryLimits", zap.Any("limits", limits))
+
+	retBody := map[string]float64{}
+	for _, l := range limits {
+		retBody[l.Name] = l.Limit
+	}
+	c.JSON(http.StatusOK, retBody)
+}
