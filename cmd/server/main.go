@@ -55,6 +55,8 @@ func main() {
 	r.POST("/v1/categories", bs.AddCategory)
 	r.GET("/v1/categories", bs.ListCategories)
 
+	r.GET("/v1/spending", bs.GetSpending)
+
 	if err := r.Run(listenAddr); err != nil {
 		logger.Fatal("Error running server", zap.Error(err))
 	}

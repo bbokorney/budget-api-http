@@ -8,6 +8,7 @@ func AllModels() []interface{} {
 	return []interface{}{
 		&Transaction{},
 		&Category{},
+		&CategoryLimit{},
 	}
 }
 
@@ -22,4 +23,10 @@ type Transaction struct {
 type Category struct {
 	ID   uint   `gorm:"primarykey" json:"id"`
 	Name string `gorm:"unique" json:"name"`
+}
+
+type CategoryLimit struct {
+	ID    uint    `gorm:"primarykey" json:"id"`
+	Name  string  `gorm:"unique" json:"name"`
+	Limit float64 `json:"limit"`
 }

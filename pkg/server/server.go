@@ -1,11 +1,11 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/bbokorney/budget-api-http/pkg/models"
+	"github.com/bbokorney/budget-api-http/pkg/spendingview"
+	"github.com/bbokorney/budget-api-http/pkg/sqlutil"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -19,8 +19,9 @@ func NewBudgetServer(db *gorm.DB, logger *zap.Logger) *BudgetServer {
 }
 
 type BudgetServer struct {
-	db     *gorm.DB
-	logger *zap.Logger
+	db                *gorm.DB
+	logger            *zap.Logger
+	spendingViewCache *spendingview.Container
 }
 
 func (bs *BudgetServer) AddTransaction(c *gin.Context) {
@@ -51,12 +52,7 @@ func (bs *BudgetServer) ListTransactions(c *gin.Context) {
 	var t []models.Transaction
 	var result *gorm.DB
 	if params.CurrentMonth {
-		today := time.Now()
-		year, month := today.Year(), today.Month()
-		start := fmt.Sprintf("%d-%d-01 00:00", year, month)
-		end := fmt.Sprintf("%d-%d-01 00:00", year, (month+1)%12)
-		bs.logger.Debug("ListTransactions", zap.Any("start", start), zap.Any("end", end))
-		result = bs.db.Where("date BETWEEN ? AND ?", start, end).Find(&t)
+		result = bs.db.Scopes(sqlutil.CurrentMonthWhereClause).Find(&t)
 	} else {
 		result = bs.db.Find(&t)
 	}
@@ -92,4 +88,30 @@ func (bs *BudgetServer) ListCategories(c *gin.Context) {
 	}
 	bs.logger.Debug("ListCategory", zap.Any("categories", cats))
 	c.JSON(http.StatusOK, cats)
+}
+
+func (bs *BudgetServer) GetSpending(c *gin.Context) {
+	type Row struct {
+		Total    float64 `json:"amount"`
+		Category string  `json:"name"`
+	}
+	var queryResult []Row
+	result := bs.db.Model(&models.Transaction{}).
+		Scopes(sqlutil.CurrentMonthWhereClause).
+		Select("sum(amount) as total,category").
+		Group("category").
+		Order("total desc").
+		Find(&queryResult)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
+		return
+	}
+	retBody := map[string]float64{}
+	totalSum := 0.0
+	for _, r := range queryResult {
+		retBody[r.Category] = r.Total
+		totalSum += r.Total
+	}
+	retBody["Total"] = totalSum
+	c.JSON(http.StatusOK, retBody)
 }
