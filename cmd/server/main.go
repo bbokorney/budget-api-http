@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,7 +17,16 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	authTokenHeader = "X-Auth-Token"
+)
+
 func main() {
+	authToken := os.Getenv("AUTH_TOKEN")
+	if authToken == "" {
+		fmt.Println("Must set AUTH_TOKEN env var")
+		os.Exit(1)
+	}
 	logger := buildLogger()
 	logger.Info("Setting up database")
 	dbDirectory := "./dbs"
@@ -46,11 +56,12 @@ func main() {
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowOrigins = []string{"*"}
 	corsConfig.AllowCredentials = true
-	corsConfig.AllowHeaders = append(corsConfig.AllowHeaders, "X-Auth-Token")
+	corsConfig.AllowHeaders = append(corsConfig.AllowHeaders, authTokenHeader)
 	corsConfig.AddAllowMethods("OPTIONS")
 
 	r := gin.Default()
 	r.Use(cors.New(corsConfig))
+	r.Use(authHandler(authToken))
 	r.POST("/v1/transactions", bs.AddTransaction)
 	r.GET("/v1/transactions", bs.ListTransactions)
 
@@ -67,6 +78,16 @@ func main() {
 
 	if err := r.Run(listenAddr); err != nil {
 		logger.Fatal("Error running server", zap.Error(err))
+	}
+}
+
+func authHandler(authToken string) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		userToken := c.Request.Header.Get(authTokenHeader)
+		if userToken != authToken {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid auth token"})
+			return
+		}
 	}
 }
 

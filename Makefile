@@ -1,4 +1,8 @@
 SHELL := /bin/bash
+
+export AUTH_TOKEN=abc123
+export LOG_LEVEL=debug
+
 .PHONY: build run reload
 
 build:
@@ -8,5 +12,4 @@ run: build
 	build/_outputs/budget-server
 
 reload:
-	LOG_LEVEL=debug
 	hack/reload.sh 'make run' pkg/ cmd/
