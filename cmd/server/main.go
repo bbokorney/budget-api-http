@@ -46,7 +46,9 @@ func main() {
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowOrigins = []string{"*"}
 	corsConfig.AllowCredentials = true
+	corsConfig.AllowHeaders = append(corsConfig.AllowHeaders, "X-Auth-Token")
 	corsConfig.AddAllowMethods("OPTIONS")
+
 	r := gin.Default()
 	r.Use(cors.New(corsConfig))
 	r.POST("/v1/transactions", bs.AddTransaction)
