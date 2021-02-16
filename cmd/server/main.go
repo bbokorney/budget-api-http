@@ -48,7 +48,7 @@ func main() {
 
 	logger.Info("Database setup complete")
 
-	listenAddr := ":8000"
+	listenAddr := "127.0.0.1:8000"
 	logger.Info("Starting listener", zap.Any("address", listenAddr))
 
 	bs := server.NewBudgetServer(db, logger)
@@ -62,19 +62,22 @@ func main() {
 	r := gin.Default()
 	r.Use(cors.New(corsConfig))
 	r.Use(authHandler(authToken))
-	r.POST("/v1/transactions", bs.AddTransaction)
-	r.GET("/v1/transactions", bs.ListTransactions)
+	apiv1 := r.Group("/api/v1")
+	{
+		apiv1.POST("/transactions", bs.AddTransaction)
+		apiv1.GET("/transactions", bs.ListTransactions)
 
-	r.POST("/v1/categories", bs.AddCategory)
-	r.GET("/v1/categories", bs.ListCategories)
+		apiv1.POST("/categories", bs.AddCategory)
+		apiv1.GET("/categories", bs.ListCategories)
 
-	r.POST("/v1/category-limits", bs.AddCategoryLimit)
-	r.GET("/v1/category-limits", bs.ListCategoryLimits)
+		apiv1.POST("/category-limits", bs.AddCategoryLimit)
+		apiv1.GET("/category-limits", bs.ListCategoryLimits)
 
-	r.POST("/v1/annual-limits", bs.AddAnnualLimit)
-	r.GET("/v1/annual-limits", bs.ListAnnualLimits)
+		apiv1.POST("/annual-limits", bs.AddAnnualLimit)
+		apiv1.GET("/annual-limits", bs.ListAnnualLimits)
 
-	r.GET("/v1/spending", bs.GetSpending)
+		apiv1.GET("/spending", bs.GetSpending)
+	}
 
 	if err := r.Run(listenAddr); err != nil {
 		logger.Fatal("Error running server", zap.Error(err))
