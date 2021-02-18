@@ -88,7 +88,7 @@ func authHandler(authToken string) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		userToken := c.Request.Header.Get(authTokenHeader)
 		if userToken != authToken {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid auth token"})
+			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 	}
