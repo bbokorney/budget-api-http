@@ -30,6 +30,7 @@ func main() {
 	defer file.Close()
 	r := csv.NewReader(file)
 
+	client := http.Client{}
 	for {
 		tokens, err := r.Read()
 		if err == io.EOF {
@@ -77,7 +78,14 @@ func main() {
 			log.Fatal(err)
 		}
 		fmt.Println(string(body))
-		resp, err := http.Post("http://localhost:8000/v1/transactions", "application/json", bytes.NewBuffer(body))
+		req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:8000/api/v1/transactions", bytes.NewBuffer(body))
+		if err != nil {
+			fmt.Println("Error creating request")
+			log.Fatal(err)
+		}
+		req.Header.Add("Content-Type", "application/json")
+		req.Header.Add("X-Auth-Token", "abc123")
+		resp, err := client.Do(req)
 		if err != nil {
 			fmt.Println("Error sending request")
 			log.Fatal(err)

@@ -183,8 +183,20 @@ func (bs *BudgetServer) ListCategoryLimits(c *gin.Context) {
 	}
 	bs.logger.Debug("ListCategoryLimits", zap.Any("monthlyPlannedTotal", monthlyPlannedTotal))
 
+	var previousMonthsTotalSpending float64
+	result = bs.db.Model(&models.Transaction{}).
+		Scopes(sqlutil.AllPreviousMonthsWhereClause).
+		Select("sum(amount)").
+		Find(&previousMonthsTotalSpending)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
+		return
+	}
+	bs.logger.Debug("ListCategoryLimits", zap.Any("previousMonthsTotalSpending", previousMonthsTotalSpending))
+
 	retBody := map[string]float64{}
-	otherSpending := calcutil.UnplannedMonthlySpending(annualLimit, annualTotal, annualPlannedSpending, monthlyPlannedTotal)
+	otherSpending := calcutil.UnplannedMonthlySpending(annualLimit, previousMonthsTotalSpending, annualPlannedSpending, monthlyPlannedTotal)
+
 	retBody["Other"] = otherSpending
 	var total float64 = otherSpending
 	for _, l := range limits {
@@ -249,9 +261,20 @@ func (bs *BudgetServer) ListAnnualLimits(c *gin.Context) {
 	}
 	bs.logger.Debug("ListAnnualLimits", zap.Any("annualPlannedSpending", annualPlannedSpending))
 
+	var previousMonthsTotalSpending float64
+	result = bs.db.Model(&models.Transaction{}).
+		Scopes(sqlutil.AllPreviousMonthsWhereClause).
+		Select("sum(amount)").
+		Find(&previousMonthsTotalSpending)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
+		return
+	}
+	bs.logger.Debug("ListAnnualLimits", zap.Any("previousMonthsTotalSpending", previousMonthsTotalSpending))
+
 	retBody := map[string]float64{}
 	for _, l := range limits {
-		retBody[fmt.Sprintf("%.0fk", l.Amount/1000.0)] = calcutil.UnplannedMonthlySpending(l.Amount, annualTotal, annualPlannedSpending, monthlyPlannedTotal)
+		retBody[fmt.Sprintf("%.0fk", l.Amount/1000.0)] = calcutil.UnplannedMonthlySpending(l.Amount, previousMonthsTotalSpending, annualPlannedSpending, monthlyPlannedTotal)
 	}
 	retBody["Total"] = annualTotal
 	c.JSON(http.StatusOK, retBody)

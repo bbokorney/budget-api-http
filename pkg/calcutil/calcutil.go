@@ -1,7 +1,11 @@
 package calcutil
 
-import "time"
+import (
+	"time"
+)
 
-func UnplannedMonthlySpending(annualLimit, currentYearSpending, annualPlannedSpending, monthlyPlannedSpeding float64) float64 {
-	return (annualLimit-currentYearSpending-annualPlannedSpending)/float64(12-time.Now().Month()+1) - monthlyPlannedSpeding
+func UnplannedMonthlySpending(annualLimit, previousMonthsTotalSpending, annualPlannedSpending, monthlyPlannedSpending float64) float64 {
+	monthsLeftInYear := float64(12-time.Now().Month()) + 1
+	unplannedSpendingLeft := annualLimit - previousMonthsTotalSpending - annualPlannedSpending - (monthsLeftInYear)*monthlyPlannedSpending
+	return unplannedSpendingLeft / monthsLeftInYear
 }

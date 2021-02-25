@@ -15,6 +15,14 @@ func CurrentMonthWhereClause(db *gorm.DB) *gorm.DB {
 	return db.Where("date BETWEEN ? AND ?", start, end)
 }
 
+func AllPreviousMonthsWhereClause(db *gorm.DB) *gorm.DB {
+	today := time.Now()
+	year, month := today.Year(), today.Month()
+	start := fmt.Sprintf("%d-01-01 00:00", year)
+	end := fmt.Sprintf("%d-%02d-01 00:00", year, month)
+	return db.Where("date BETWEEN ? AND ?", start, end)
+}
+
 func CurrentYearWhereClause(db *gorm.DB) *gorm.DB {
 	year := time.Now().Year()
 	start := fmt.Sprintf("%d-01-01 00:00", year)
